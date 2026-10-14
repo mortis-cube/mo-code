@@ -62,7 +62,13 @@ export async function promptForProjectTrust(
         "请选择 [1-2]: ",
         interruptController.signal,
       );
-      if (input === undefined) return false;
+      if (input === undefined) {
+        // Node.js 22 可能先处理 stdin EOF，再派发同一时刻收到的 SIGINT。
+        // 让出一轮事件循环，避免把 Ctrl+C 误判为普通输入结束并以 0 退出。
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        interruptController.signal.throwIfAborted();
+        return false;
+      }
 
       const selection = input.trim();
       if (selection === "1") return true;
